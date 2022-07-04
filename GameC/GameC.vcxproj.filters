@@ -15,12 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\GameB\Main.c">
+    <ClCompile Include="..\Main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\GameB\Main.h">
+    <ClInclude Include="..\Main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
