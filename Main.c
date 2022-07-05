@@ -14,7 +14,7 @@ HWND gGameWindow;
 BOOL gGameIsRunning;
 GAMEBITMAP gBackBuffer;
 GAMEPERFORMANCEDATA gPerformanceData;
-PLAYER gPlayer;
+HERO gPlayer;
 BOOL gWindowHasFocus;
 
 int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
@@ -97,8 +97,10 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
 
     memset(gBackBuffer.memory, 0x7f, GAME_DRAWING_AREA_MEMORY_SIZE);
 
-    gPlayer.screenPosX = 30;
-    gPlayer.screenPosY = 30;
+    if (InitializeHero() != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to initialize hero!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
 
     gGameIsRunning = TRUE;
 
@@ -136,12 +138,12 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
         elapsedMicrosecondsAccumulatorCooked += elapsedMicroseconds;
 
         if ((gPerformanceData.totalFramesRendered % CALCULATE_AVG_FPS_EVERY_X_FRAMES) == 0) {
-            GetSystemTimeAsFileTime(&gPerformanceData.currentSystemTime);
+            GetSystemTimeAsFileTime((FILETIME*) &gPerformanceData.currentSystemTime);
             GetProcessTimes(processHandle,
                             &processCreationTime,
                             &processExitTime,
-                            &currentKernelCPUTime,
-                            &currentUserCPUTTime);
+                            (FILETIME*) &currentKernelCPUTime,
+                            (FILETIME*) &currentUserCPUTTime);
 
             gPerformanceData.cpuPercent = (currentKernelCPUTime - previousKernelCPUTTime) +
                     (currentUserCPUTTime - previousUserCPUTime);
@@ -256,7 +258,7 @@ Exit:
 BOOL GameIsAlreadyRunning(void) {
     CreateMutexA(NULL, FALSE, GAME_NAME "_GameMutex");
 
-    return (GetLastError() == ERROR_ALREADY_EXISTS);
+return (GetLastError() == ERROR_ALREADY_EXISTS);
 }
 
 void ProcessPlayerInput(void) {
@@ -316,6 +318,86 @@ void ProcessPlayerInput(void) {
     rightKeyWasDown = rightKeyIsDown;
     upKeyWasDown = upKeyIsDown;
     downKeyWasDown = downKeyIsDown;
+}
+
+DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap) {
+    DWORD error = ERROR_SUCCESS;
+    HANDLE fileHandle = INVALID_HANDLE_VALUE;
+    WORD bitmapHeader = 0;
+    DWORD pixelDataOffset = 0;
+    DWORD numberOfBytesRead = 0;
+
+    if ((fileHandle = CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (ReadFile(fileHandle, &bitmapHeader, 2, &numberOfBytesRead, NULL) == 0) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (bitmapHeader != 0x4d42) { // "BM" backwords
+        error = ERROR_FILE_INVALID;
+        goto Exit;
+    }
+
+    if (SetFilePointer(fileHandle, 10, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (ReadFile(fileHandle, &pixelDataOffset, sizeof(DWORD), &numberOfBytesRead, NULL) == 0) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (SetFilePointer(fileHandle, 0xe, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (ReadFile(fileHandle, &gameBitmap->bitmapinfo.bmiHeader, sizeof(BITMAPINFOHEADER), &numberOfBytesRead, NULL) == 0) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if ((gameBitmap->memory = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, gameBitmap->bitmapinfo.bmiHeader.biSizeImage)) == NULL) {
+        error = ERROR_NOT_ENOUGH_MEMORY;
+        goto Exit;
+    }
+
+    if (SetFilePointer(fileHandle, pixelDataOffset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+    if (ReadFile(fileHandle, &gameBitmap->memory, gameBitmap->bitmapinfo.bmiHeader.biSizeImage, &numberOfBytesRead, NULL) == 0) {
+        error = GetLastError();
+        goto Exit;
+    }
+
+Exit:
+    if (fileHandle && (fileHandle != INVALID_HANDLE_VALUE)) {
+        CloseHandle(fileHandle);
+    }
+    
+    return error;
+}
+
+DWORD InitializeHero(void) {
+    DWORD error = ERROR_SUCCESS;
+
+    gPlayer.screenPosX = 30;
+    gPlayer.screenPosY = 30;
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_0])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load bitmap!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+Exit:
+    return error;
 }
 
 void RenderFrameGraphics(void) {

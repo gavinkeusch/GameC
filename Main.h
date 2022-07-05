@@ -7,7 +7,24 @@
 #define GAME_DRAWING_AREA_MEMORY_SIZE (GAME_RES_WIDTH * GAME_RES_HEIGHT * (GAME_BPP / 8))
 #define CALCULATE_AVG_FPS_EVERY_X_FRAMES 120
 #define TARGET_MICROSECONDS_PER_FRAME 16667ULL
-//#define SIMD
+#define SIMD
+
+#define SUIT_0 0
+#define SUIT_1 1
+#define SUIT_2 2
+
+#define FACING_DOWN_0 0
+#define FACING_DOWN_1 1
+#define FACING_DOWN_2 2
+#define FACING_LEFT_0 3
+#define FACING_LEFT_1 4
+#define FACING_LEFT_2 5
+#define FACING_RIGHT_0 6
+#define FACING_RIGHT_1 7
+#define FACING_RIGHT_2 8
+#define FACING_UPWARD_0 9
+#define FACING_UPWARD_1 10
+#define FACING_UPWARD_2 11
 
 #pragma warning(disable: 4820) // disable warning about structure padding
 #pragma warning(disable: 5045) // disable warning about spectre/meltdown CPU vulnerability
@@ -48,19 +65,22 @@ typedef struct GAMEPERFORMANCEDATA {
     double cpuPercent;
 } GAMEPERFORMANCEDATA;
 
-typedef struct PLAYER {
+typedef struct HERO {
     char name[12];
+    GAMEBITMAP sprite[3][12];
     int32_t screenPosX;
     int32_t screenPosY;
     int32_t hp;
     int32_t strength;
     int32_t mp;
-} PLAYER;
+} HERO;
 
 LRESULT CALLBACK MainWindowProc(_In_ HWND windowHandle, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam);
 DWORD CreateMainGameWindow(void);
 BOOL GameIsAlreadyRunning(void);
 void ProcessPlayerInput(void);
+DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap);
+DWORD InitializeHero(void);
 void RenderFrameGraphics(void);
 
 #ifdef SIMD
