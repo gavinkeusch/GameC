@@ -372,7 +372,7 @@ DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitma
         goto Exit;
     }
 
-    if (ReadFile(fileHandle, &gameBitmap->memory, gameBitmap->bitmapinfo.bmiHeader.biSizeImage, &numberOfBytesRead, NULL) == 0) {
+    if (ReadFile(fileHandle, gameBitmap->memory, gameBitmap->bitmapinfo.bmiHeader.biSizeImage, &numberOfBytesRead, NULL) == 0) {
         error = GetLastError();
         goto Exit;
     }
@@ -388,16 +388,50 @@ Exit:
 DWORD InitializeHero(void) {
     DWORD error = ERROR_SUCCESS;
 
-    gPlayer.screenPosX = 30;
-    gPlayer.screenPosY = 30;
+    gPlayer.screenPosX = 25;
+    gPlayer.screenPosY = 25;
 
     if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_0])) != ERROR_SUCCESS) {
-        MessageBoxA(NULL, "Failed to load bitmap!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Standing!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Walk1.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_1])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Walk1!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Walk2.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_2])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Walk2!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         goto Exit;
     }
 
 Exit:
     return error;
+}
+
+void Blit32BppBitmapToBuffer(_In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y) {
+    int32_t startingScreenPixel = ((GAME_RES_WIDTH * GAME_RES_HEIGHT) - GAME_RES_WIDTH) - (GAME_RES_WIDTH * y) + x;
+
+    int32_t startingBitmapPixel = ((gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth);
+
+    int32_t memoryOffset = 0;
+    int32_t bitmapOffset = 0;
+    PIXEL32 bitmapPixel = { 0 };
+    PIXEL32 backgroundPixel = { 0 };
+
+    for (int16_t yPixel = 0; yPixel < gameBitmap->bitmapinfo.bmiHeader.biHeight; yPixel++) {
+        for (int16_t xPixel = 0; xPixel < gameBitmap->bitmapinfo.bmiHeader.biWidth; xPixel++) {
+            memoryOffset = startingScreenPixel + xPixel - (GAME_RES_WIDTH * yPixel);
+            bitmapOffset = startingBitmapPixel + xPixel - (gameBitmap->bitmapinfo.bmiHeader.biWidth * yPixel);
+
+            memcpy_s(&bitmapPixel, sizeof(PIXEL32), (PIXEL32*)gameBitmap->memory + bitmapOffset, sizeof(PIXEL32));
+
+            if (bitmapPixel.alpha == 255) {
+                memcpy_s((PIXEL32*)gBackBuffer.memory + memoryOffset, sizeof(PIXEL32), &bitmapPixel, sizeof(PIXEL32));
+            }
+        }
+    }
 }
 
 void RenderFrameGraphics(void) {
@@ -411,7 +445,7 @@ void RenderFrameGraphics(void) {
     ClearScreen(&pixel);
 #endif
 
-    int32_t screenX = gPlayer.screenPosX;
+    /*int32_t screenX = gPlayer.screenPosX;
     int32_t screenY = gPlayer.screenPosY;
     int32_t startingScreenPixel = ((GAME_RES_WIDTH * GAME_RES_HEIGHT) - GAME_RES_WIDTH) - (GAME_RES_WIDTH * screenY) + screenX;
 
@@ -419,7 +453,9 @@ void RenderFrameGraphics(void) {
         for (int32_t x = 0; x < 16; x++) {
             memset((PIXEL32*)gBackBuffer.memory + (uintptr_t)startingScreenPixel + x - ((uintptr_t)GAME_RES_WIDTH * y), 0xff, sizeof(PIXEL32));
         }
-    }
+    }*/
+
+    Blit32BppBitmapToBuffer(&gPlayer.sprite[SUIT_0][FACING_DOWN_0], gPlayer.screenPosX, gPlayer.screenPosY);
 
     HDC deviceContext = GetDC(gGameWindow);
 

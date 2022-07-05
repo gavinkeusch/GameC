@@ -81,6 +81,7 @@ BOOL GameIsAlreadyRunning(void);
 void ProcessPlayerInput(void);
 DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap);
 DWORD InitializeHero(void);
+void Blit32BppBitmapToBuffer(_In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y);
 void RenderFrameGraphics(void);
 
 #ifdef SIMD
