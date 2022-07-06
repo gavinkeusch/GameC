@@ -288,29 +288,68 @@ void ProcessPlayerInput(void) {
         gPerformanceData.displayDebugInfo = !gPerformanceData.displayDebugInfo;
     }
 
-    if (leftKeyIsDown) {
-        if (gPlayer.screenPosX > 0) {
-            gPlayer.screenPosX--;
+    if (!gPlayer.movementRemaining) {
+        if (downKeyIsDown) {
+            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
+                gPlayer.direction = DIRECTION_DOWN;
+                gPlayer.movementRemaining = 16;
+            }
+        } 
+        else if (leftKeyIsDown) {
+            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
+                gPlayer.direction = DIRECTION_LEFT;
+                gPlayer.movementRemaining = 16;
+            }
+        } 
+        else if (rightKeyIsDown) {
+            if (gPlayer.screenPosX < GAME_RES_WIDTH - 16) {
+                gPlayer.direction = DIRECTION_RIGHT;
+                gPlayer.movementRemaining = 16;
+            }
+        } 
+        else if (upKeyIsDown) {
+            if (gPlayer.screenPosY > 0) {
+                gPlayer.direction = DIRECTION_UP;
+                gPlayer.movementRemaining = 16;
+            }
         }
     }
+    else {
+        gPlayer.movementRemaining--;
 
-    if (rightKeyIsDown) {
-        if (gPlayer.screenPosX < GAME_RES_WIDTH - 16) {
-            gPlayer.screenPosX++;
-        }
-    }
-
-    if (downKeyIsDown) {
-        if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
+        if (gPlayer.direction == DIRECTION_DOWN) {
             gPlayer.screenPosY++;
         }
-    }
-
-    if (upKeyIsDown) {
-        if (gPlayer.screenPosY > 0) {
+        else if (gPlayer.direction == DIRECTION_LEFT) {
+            gPlayer.screenPosX--;
+        }
+        else if (gPlayer.direction == DIRECTION_RIGHT) {
+            gPlayer.screenPosX++;
+        }
+        else if (gPlayer.direction == DIRECTION_UP) {
             gPlayer.screenPosY--;
         }
 
+        switch (gPlayer.movementRemaining) {
+            case 16:
+                gPlayer.spriteIndex = 0;
+                break;
+            case 12:
+                gPlayer.spriteIndex = 1;
+                break;
+            case 8:
+                gPlayer.spriteIndex = 0;
+                break;
+            case 4:
+                gPlayer.spriteIndex = 2;
+                break;
+            case 0:
+                gPlayer.spriteIndex = 0;
+                break;
+            default:
+                // assert
+                break;
+        }
     }
 
     debugKeyWasDown = debugKeyIsDown;
@@ -388,8 +427,10 @@ Exit:
 DWORD InitializeHero(void) {
     DWORD error = ERROR_SUCCESS;
 
-    gPlayer.screenPosX = 25;
-    gPlayer.screenPosY = 25;
+    gPlayer.screenPosX = 32;
+    gPlayer.screenPosY = 32;
+    gPlayer.currentArmor = SUIT_0;
+    gPlayer.direction = DIRECTION_DOWN;
 
     if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_0])) != ERROR_SUCCESS) {
         MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Standing!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -403,6 +444,51 @@ DWORD InitializeHero(void) {
 
     if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Walk2.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_2])) != ERROR_SUCCESS) {
         MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Walk2!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Left_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_LEFT_0])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Left_Standing.bmpx!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Left_Walk1.bmpx", &gPlayer.sprite[SUIT_0][FACING_LEFT_1])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Left_Walk1!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Left_Walk2.bmpx", &gPlayer.sprite[SUIT_0][FACING_LEFT_2])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Left_Walk2!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Right_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_RIGHT_0])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Right_Standing.bmpx!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Right_Walk1.bmpx", &gPlayer.sprite[SUIT_0][FACING_RIGHT_1])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Right_Walk1!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Right_Walk2.bmpx", &gPlayer.sprite[SUIT_0][FACING_RIGHT_2])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Right_Walk2!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Up_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_UP_0])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Up_Standing.bmpx!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Up_Walk1.bmpx", &gPlayer.sprite[SUIT_0][FACING_UP_1])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Up_Walk1!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        goto Exit;
+    }
+
+    if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Up_Walk2.bmpx", &gPlayer.sprite[SUIT_0][FACING_UP_2])) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load Hero_Suit0_Up_Walk2!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         goto Exit;
     }
 
@@ -445,17 +531,7 @@ void RenderFrameGraphics(void) {
     ClearScreen(&pixel);
 #endif
 
-    /*int32_t screenX = gPlayer.screenPosX;
-    int32_t screenY = gPlayer.screenPosY;
-    int32_t startingScreenPixel = ((GAME_RES_WIDTH * GAME_RES_HEIGHT) - GAME_RES_WIDTH) - (GAME_RES_WIDTH * screenY) + screenX;
-
-    for (int32_t y = 0;y < 16; y++) {
-        for (int32_t x = 0; x < 16; x++) {
-            memset((PIXEL32*)gBackBuffer.memory + (uintptr_t)startingScreenPixel + x - ((uintptr_t)GAME_RES_WIDTH * y), 0xff, sizeof(PIXEL32));
-        }
-    }*/
-
-    Blit32BppBitmapToBuffer(&gPlayer.sprite[SUIT_0][FACING_DOWN_0], gPlayer.screenPosX, gPlayer.screenPosY);
+    Blit32BppBitmapToBuffer(&gPlayer.sprite[gPlayer.currentArmor][gPlayer.direction + gPlayer.spriteIndex], gPlayer.screenPosX, gPlayer.screenPosY);
 
     HDC deviceContext = GetDC(gGameWindow);
 
@@ -466,25 +542,30 @@ void RenderFrameGraphics(void) {
         SelectObject(deviceContext, (HFONT) GetStockObject(ANSI_FIXED_FONT));
         char DebugTextBuffer[64] = { 0 };
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Raw:        %.01f", gPerformanceData.rawFPSAverage);
-        TextOutA(deviceContext,10 , 10, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 0, DebugTextBuffer, (int)strlen(DebugTextBuffer));
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Cooked:     %.01f  ", gPerformanceData.cookedFPSAverage);
-        TextOutA(deviceContext,10 , 23, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 13, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Min. Timer Res: %.02f ", gPerformanceData.minimumTimerResolution / 10000.0f);
-        TextOutA(deviceContext,10 , 36, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 26, DebugTextBuffer, (int)strlen(DebugTextBuffer));
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Max. Timer Res: %.02f  ", gPerformanceData.maximumTimerResolution / 10000.0f);
-        TextOutA(deviceContext,10 , 49, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 39, DebugTextBuffer, (int)strlen(DebugTextBuffer));
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Cur. Timer Res: %.02f  ", gPerformanceData.currentTimerResolution / 10000.0f);
-        TextOutA(deviceContext,10 , 62, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 52, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Handles:        %lu   ", gPerformanceData.handleCount);
-        TextOutA(deviceContext,10 , 75, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 65, DebugTextBuffer, (int)strlen(DebugTextBuffer));
         sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Memory:       %lu KB ", gPerformanceData.memInfo.PrivateUsage / 1024);
-        TextOutA(deviceContext,10 , 88, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(deviceContext,0 , 78, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
-        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "CPU Perc.:    %.02f %% ", gPerformanceData.cpuPercent);
-        TextOutA(deviceContext,10 , 101, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "CPU:           %.02f %% ", gPerformanceData.cpuPercent);
+        TextOutA(deviceContext,0 , 91, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
+        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Total Frames:   %llu ", gPerformanceData.totalFramesRendered);
+        TextOutA(deviceContext, 0, 104, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+
+        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Screen Pos:  (%d,%d)", gPlayer.screenPosX, gPlayer.screenPosY);
+        TextOutA(deviceContext, 0, 117, DebugTextBuffer, (int)strlen(DebugTextBuffer));
     }
 
     ReleaseDC(gGameWindow, deviceContext);
