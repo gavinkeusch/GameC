@@ -13,25 +13,32 @@
 #define SUIT_1 1
 #define SUIT_2 2
 
-#define FACING_DOWN_0 0
-#define FACING_DOWN_1 1
-#define FACING_DOWN_2 2
-#define FACING_LEFT_0 3
-#define FACING_LEFT_1 4
-#define FACING_LEFT_2 5
+#define FACING_DOWN_0  0
+#define FACING_DOWN_1  1
+#define FACING_DOWN_2  2
+#define FACING_LEFT_0  3
+#define FACING_LEFT_1  4
+#define FACING_LEFT_2  5
 #define FACING_RIGHT_0 6
 #define FACING_RIGHT_1 7
 #define FACING_RIGHT_2 8
-#define FACING_UP_0 9
-#define FACING_UP_1 10
-#define FACING_UP_2 11
+#define FACING_UP_0    9
+#define FACING_UP_1    10
+#define FACING_UP_2    11
 
-#define DIRECTION_DOWN 0
-#define DIRECTION_LEFT 3
+#define DIRECTION_DOWN  0
+#define DIRECTION_LEFT  3
 #define DIRECTION_RIGHT 6
-#define DIRECTION_UP 9
+#define DIRECTION_UP    9
 
 #define FONT_SHEET_CHARACTERS_PER_ROW 98
+
+#define LOG_LEVEL_NONE  0
+#define LOG_LEVEL_INFO  1
+#define LOG_LEVEL_WARN  2
+#define LOG_LEVEL_ERROR 3
+#define LOG_LEVEL_DEBUG 4
+#define LOG_FILE_NAME GAME_NAME ".log"
 
 #pragma warning(disable: 4820) // disable warning about structure padding
 #pragma warning(disable: 5045) // disable warning about spectre/meltdown CPU vulnerability
@@ -75,8 +82,8 @@ typedef struct GAMEPERFORMANCEDATA {
 typedef struct HERO {
     char name[12];
     GAMEBITMAP sprite[3][12];
-    int32_t screenPosX;
-    int32_t screenPosY;
+    int16_t screenPosX;
+    int16_t screenPosY;
     uint8_t movementRemaining;
     uint8_t direction;
     uint8_t currentArmor;
@@ -86,15 +93,28 @@ typedef struct HERO {
     int32_t mp;
 } HERO;
 
+typedef struct REGISTRYPARAMS {
+    DWORD logLevel;
+} REGISTRYPARAMS;
+
 LRESULT CALLBACK MainWindowProc(_In_ HWND windowHandle, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam);
+
 DWORD CreateMainGameWindow(void);
 BOOL GameIsAlreadyRunning(void);
+
 void ProcessPlayerInput(void);
+
 DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap);
+
 DWORD InitializeHero(void);
+
 void Blit32BppBitmapToBuffer(_In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y);
-void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y);
+void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* fontSheet, _In_ PIXEL32* color, _In_ uint16_t x, _In_ uint16_t y);
+
 void RenderFrameGraphics(void);
+
+DWORD LoadRegistryParameters(void);
+void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...);
 
 #ifdef SIMD
 void ClearScreen(_In_ __m128i* color);
