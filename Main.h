@@ -31,6 +31,7 @@
 #define DIRECTION_RIGHT 6
 #define DIRECTION_UP 9
 
+#define FONT_SHEET_CHARACTERS_PER_ROW 98
 
 #pragma warning(disable: 4820) // disable warning about structure padding
 #pragma warning(disable: 5045) // disable warning about spectre/meltdown CPU vulnerability
@@ -92,6 +93,7 @@ void ProcessPlayerInput(void);
 DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap);
 DWORD InitializeHero(void);
 void Blit32BppBitmapToBuffer(_In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y);
+void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y);
 void RenderFrameGraphics(void);
 
 #ifdef SIMD

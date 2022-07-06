@@ -13,14 +13,15 @@
 HWND gGameWindow;
 BOOL gGameIsRunning;
 GAMEBITMAP gBackBuffer;
+GAMEBITMAP g6x7Font;
 GAMEPERFORMANCEDATA gPerformanceData;
 HERO gPlayer;
 BOOL gWindowHasFocus;
 
 int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
-	UNREFERENCED_PARAMETER(previousInstance);
-	UNREFERENCED_PARAMETER(commandLine);
-	UNREFERENCED_PARAMETER(showCommand);
+    UNREFERENCED_PARAMETER(previousInstance);
+    UNREFERENCED_PARAMETER(commandLine);
+    UNREFERENCED_PARAMETER(showCommand);
 
     MSG message = { 0 };
     int64_t frameStart = 0;
@@ -77,6 +78,11 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
     }
 
     if (CreateMainGameWindow() != ERROR_SUCCESS) {
+        goto Exit;
+    }
+
+    if ((Load32BppBitmapFromFile("..\\Assets\\6x7Font.bmpx", &g6x7Font)) != ERROR_SUCCESS) {
+        MessageBoxA(NULL, "Failed to load 6x7Font!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         goto Exit;
     }
 
@@ -520,6 +526,355 @@ void Blit32BppBitmapToBuffer(_In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ 
     }
 }
 
+void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* gameBitmap, _In_ uint16_t x, _In_ uint16_t y) {
+    int charWidth = gameBitmap->bitmapinfo.bmiHeader.biWidth / FONT_SHEET_CHARACTERS_PER_ROW;
+    int charHeight = gameBitmap->bitmapinfo.bmiHeader.biHeight;
+    int bytesPerCharacter = (charWidth * charHeight * (gameBitmap->bitmapinfo.bmiHeader.biBitCount / 8));
+    int stringLength = strlen(string);
+
+    GAMEBITMAP stringBitmap = { 0 };
+
+    stringBitmap.bitmapinfo.bmiHeader.biBitCount = GAME_BPP;
+    stringBitmap.bitmapinfo.bmiHeader.biHeight = charHeight;
+    stringBitmap.bitmapinfo.bmiHeader.biWidth = charWidth * stringLength;
+    stringBitmap.bitmapinfo.bmiHeader.biPlanes = 1;
+    stringBitmap.bitmapinfo.bmiHeader.biCompression = BI_RGB;
+
+    stringBitmap.memory = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, bytesPerCharacter * stringLength);
+
+    for (int character = 0; character < stringLength; character++) {
+        int startingFontSheetByte = 0;
+        int fontSheetOffset = 0;
+        int stringBitmapOffset = 0;
+        PIXEL32 fontSheetPixel = { 0 };
+
+        switch (string[character]) {
+        case 'A':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth;
+            break;
+        case 'B':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + charWidth;
+            break;
+        case 'C':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (2 * charWidth);
+            break;
+        case 'D':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (3 * charWidth);
+            break;
+        case 'E':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (4 * charWidth);
+            break;
+        case 'F':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (5 * charWidth);
+            break;
+        case 'G':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (6 * charWidth);
+            break;
+        case 'H':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (7 * charWidth);
+            break;
+        case 'I':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (8 * charWidth);
+            break;
+        case 'J':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (9 * charWidth);
+            break;
+        case 'K':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (10 * charWidth);
+            break;
+        case 'L':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (11 * charWidth);
+            break;
+        case 'M':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (12 * charWidth);
+            break;
+        case 'N':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (13 * charWidth);
+            break;
+        case 'O':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (14 * charWidth);
+            break;
+        case 'P':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (15 * charWidth);
+            break;
+        case 'Q':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (16 * charWidth);
+            break;
+        case 'R':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (17 * charWidth);
+            break;
+        case 'S':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (18 * charWidth);
+            break;
+        case 'T':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (19 * charWidth);
+            break;
+        case 'U':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (20 * charWidth);
+            break;
+        case 'V':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (21 * charWidth);
+            break;
+        case 'W':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (22 * charWidth);
+            break;
+        case 'X':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (23 * charWidth);
+            break;
+        case 'Y':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (24 * charWidth);
+            break;
+        case 'Z':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (25 * charWidth);
+            break;
+        case 'a':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (26 * charWidth);
+            break;
+        case 'b':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (27 * charWidth);
+            break;
+        case 'c':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (28 * charWidth);
+            break;
+        case 'd':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (29 * charWidth);
+            break;
+        case 'e':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (30 * charWidth);
+            break;
+        case 'f':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (31 * charWidth);
+            break;
+        case 'g':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (32 * charWidth);
+            break;
+        case 'h':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (33 * charWidth);
+            break;
+        case 'i':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (34 * charWidth);
+            break;
+        case 'j':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (35 * charWidth);
+            break;
+        case 'k':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (36 * charWidth);
+            break;
+        case 'l':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (37 * charWidth);
+            break;
+        case 'm':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (38 * charWidth);
+            break;
+        case 'n':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (39 * charWidth);
+            break;
+        case 'o':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (40 * charWidth);
+            break;
+        case 'p':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (41 * charWidth);
+            break;
+        case 'q':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (42 * charWidth);
+            break;
+        case 'r':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (43 * charWidth);
+            break;
+        case 's':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (44 * charWidth);
+            break;
+        case 't':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (45 * charWidth);
+            break;
+        case 'u':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (46 * charWidth);
+            break;
+        case 'v':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (47 * charWidth);
+            break;
+        case 'w':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (48 * charWidth);
+            break;
+        case 'x':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (49 * charWidth);
+            break;
+        case 'y':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (50 * charWidth);
+            break;
+        case 'z':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (51 * charWidth);
+            break;
+        case '0':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (52 * charWidth);
+            break;
+        case '1':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (53 * charWidth);
+            break;
+        case '2':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (54 * charWidth);
+            break;
+        case '3':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (55 * charWidth);
+            break;
+        case '4':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (56 * charWidth);
+            break;
+        case '5':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (57 * charWidth);
+            break;
+        case '6':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (58 * charWidth);
+            break;
+        case '7':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (59 * charWidth);
+            break;
+        case '8':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (60 * charWidth);
+            break;
+        case '9':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (61 * charWidth);
+            break;
+        case '`':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (62 * charWidth);
+            break;
+        case '~':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (63 * charWidth);
+            break;
+        case '!':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (64 * charWidth);
+            break;
+        case '@':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (65 * charWidth);
+            break;
+        case '#':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (66 * charWidth);
+            break;
+        case '$':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (67 * charWidth);
+            break;
+        case '%':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (68 * charWidth);
+            break;
+        case '^':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (69 * charWidth);
+            break;
+        case '&':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (70 * charWidth);
+            break;
+        case '*':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (71 * charWidth);
+            break;
+        case '(':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (72 * charWidth);
+            break;
+        case ')':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (73 * charWidth);
+            break;
+        case '-':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (74 * charWidth);
+            break;
+        case '=':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (75 * charWidth);
+            break;
+        case '_':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (76 * charWidth);
+            break;
+        case '+':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (77 * charWidth);
+            break;
+        case '\\':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (78 * charWidth);
+            break;
+        case '|':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (79 * charWidth);
+            break;
+        case '[':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (80 * charWidth);
+            break;
+        case ']':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (81 * charWidth);
+            break;
+        case '{':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (82 * charWidth);
+            break;
+        case '}':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (83 * charWidth);
+            break;
+        case ';':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (84 * charWidth);
+            break;
+        case '\'':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (85 * charWidth);
+            break;
+        case ':':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (86 * charWidth);
+            break;
+        case '"':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (87 * charWidth);
+            break;
+        case ',':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (88 * charWidth);
+            break;
+        case '<':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (89 * charWidth);
+            break;
+        case '>':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (90 * charWidth);
+            break;
+        case '.':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (91 * charWidth);
+            break;
+        case '/':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (92 * charWidth);
+            break;
+        case '?':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
+            break;
+        case ' ':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (94 * charWidth);
+            break;
+        // Github does not preserve this character ASCII 0xBB
+        case '»':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (95 * charWidth);
+            break;
+        // Github does not preserve this character ASCII 0xAB
+        case '«':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (96 * charWidth);
+            break;
+        case '\xf2':
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (97 * charWidth);
+            break;
+        default:
+            // TODO: assert?
+            startingFontSheetByte = (gameBitmap->bitmapinfo.bmiHeader.biWidth * gameBitmap->bitmapinfo.bmiHeader.biHeight) - gameBitmap->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
+
+        }
+
+        for (int yPixel = 0; yPixel < charHeight; yPixel++) {
+            for (int xPixel = 0; xPixel < charWidth; xPixel++) {
+                fontSheetOffset = startingFontSheetByte + xPixel - (gameBitmap->bitmapinfo.bmiHeader.biWidth * yPixel);
+                stringBitmapOffset = (character * charWidth) + (stringBitmap.bitmapinfo.bmiHeader.biWidth * stringBitmap.bitmapinfo.bmiHeader.biHeight) -
+                    stringBitmap.bitmapinfo.bmiHeader.biWidth + xPixel - (stringBitmap.bitmapinfo.bmiHeader.biWidth * yPixel);
+
+                memcpy_s(&fontSheetPixel, sizeof(PIXEL32), (PIXEL32*)gameBitmap->memory + fontSheetOffset, sizeof(PIXEL32));
+
+                fontSheetPixel.red = 0xff;
+                fontSheetPixel.green = 0.00;
+                fontSheetPixel.blue = 0x00;
+
+                memcpy_s((PIXEL32*)stringBitmap.memory + stringBitmapOffset, sizeof(PIXEL32), &fontSheetPixel, sizeof(PIXEL32));
+            }
+        }
+    }
+
+    Blit32BppBitmapToBuffer(&stringBitmap, x, y);
+
+    if (stringBitmap.memory) {
+        HeapFree(GetProcessHeap(), 0, stringBitmap.memory);
+    }
+}
+
 void RenderFrameGraphics(void) {
 #ifdef SIMD
     __m128i quadPixel = { 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff };
@@ -530,6 +885,8 @@ void RenderFrameGraphics(void) {
 
     ClearScreen(&pixel);
 #endif
+
+    BlitStringToBuffer(">>GAME OVER<<", &g6x7Font, 60, 60);
 
     Blit32BppBitmapToBuffer(&gPlayer.sprite[gPlayer.currentArmor][gPlayer.direction + gPlayer.spriteIndex], gPlayer.screenPosX, gPlayer.screenPosY);
 
