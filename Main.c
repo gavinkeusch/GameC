@@ -6,12 +6,6 @@
 #include <emmintrin.h>
 #pragma warning(pop)
 
-#ifdef SIMD
-#include <emmintrin.h>
-#endif
-
-#pragma warning(pop)
-
 #include <Xinput.h>
 #include <stdint.h>
 #include "Main.h"
@@ -36,6 +30,8 @@ REGISTRYPARAMS gRegistryParams;
 
 XINPUT_STATE gGamepadState;
 int8_t gGamepadId = -1;
+
+GAMESTATE gGameState = TITLESCREEN;
 
 int __stdcall WinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previousInstance, _In_ PSTR commandLine, _In_ INT cmdShow) {
     UNREFERENCED_PARAMETER(instance);
@@ -318,103 +314,19 @@ void ProcessPlayerInput(void) {
         return;
     }
 
-    int16_t escapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
-    int16_t debugKeyIsDown = GetAsyncKeyState(VK_F1);
-    int16_t leftKeyIsDown = GetAsyncKeyState(VK_LEFT) | GetAsyncKeyState('A');
-    int16_t rightKeyIsDown = GetAsyncKeyState(VK_RIGHT) | GetAsyncKeyState('D');
-    int16_t upKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
-    int16_t downKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
-
-    static int16_t debugKeyWasDown;
-    static int16_t leftKeyWasDown;
-    static int16_t rightKeyWasDown;
-    static int16_t upKeyWasDown;
-    static int16_t downKeyWasDown;
-
-    if (gGamepadId >= 0) {
-        if (XInputGetState(gGamepadId, &gGamepadState) == ERROR_SUCCESS) {
-            escapeKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
-            leftKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
-            rightKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
-            upKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
-            downKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
-        }
+    switch (gGameState) {
+        case OPENINGSPLASHSCREEN:
+            PlayerInputOpeningSplashScreen();
+            break;
+        case TITLESCREEN:
+            PlayerInputTitleScreen();
+            break;
+        case OVERWORLD:
+            PlayerInputOverworld();
+            break;
+        default: 
+            ASSERT(FALSE);
     }
-
-    if (escapeKeyIsDown) {
-        SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
-    }
-
-    if (debugKeyIsDown && !debugKeyWasDown) {
-        gPerformanceData.displayDebugInfo = !gPerformanceData.displayDebugInfo;
-    }
-
-    if (!gPlayer.movementRemaining) {
-        if (downKeyIsDown) {
-            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
-                gPlayer.direction = DOWN;
-                gPlayer.movementRemaining = 16;
-            }
-        } 
-        else if (leftKeyIsDown) {
-            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
-                gPlayer.direction = LEFT;
-                gPlayer.movementRemaining = 16;
-            }
-        } 
-        else if (rightKeyIsDown) {
-            if (gPlayer.screenPosX < GAME_RES_WIDTH - 16) {
-                gPlayer.direction = RIGHT;
-                gPlayer.movementRemaining = 16;
-            }
-        } 
-        else if (upKeyIsDown) {
-            if (gPlayer.screenPosY > 0) {
-                gPlayer.direction = UP;
-                gPlayer.movementRemaining = 16;
-            }
-        }
-    }
-    else {
-        gPlayer.movementRemaining--;
-
-        if (gPlayer.direction == DOWN) {
-            gPlayer.screenPosY++;
-        }
-        else if (gPlayer.direction == LEFT) {
-            gPlayer.screenPosX--;
-        }
-        else if (gPlayer.direction == RIGHT) {
-            gPlayer.screenPosX++;
-        }
-        else if (gPlayer.direction == UP) {
-            gPlayer.screenPosY--;
-        }
-
-        switch (gPlayer.movementRemaining) {
-            case 16:
-                gPlayer.spriteIndex = 0;
-                break;
-            case 12:
-                gPlayer.spriteIndex = 1;
-                break;
-            case 8:
-                gPlayer.spriteIndex = 0;
-                break;
-            case 4:
-                gPlayer.spriteIndex = 2;
-                break;
-            case 0:
-                gPlayer.spriteIndex = 0;
-                break;
-        }
-    }
-
-    debugKeyWasDown = debugKeyIsDown;
-    leftKeyWasDown = leftKeyIsDown;
-    rightKeyWasDown = rightKeyIsDown;
-    upKeyWasDown = upKeyIsDown;
-    downKeyWasDown = downKeyIsDown;
 }
 
 DWORD Load32BppBitmapFromFile(_In_ char* fileName, _Inout_ GAMEBITMAP* gameBitmap) {
@@ -933,17 +845,30 @@ void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* fontSheet, _In_ PIXE
 }
 
 void RenderFrameGraphics(void) {
-#ifdef SIMD
-    __m128i quadPixel = { 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff };
 
-    ClearScreen(&quadPixel);
-#else
-    PIXEL32 pixel = { 0x7f, 0x00, 0x00, 0xff };
+    switch (gGameState) {
+        case OPENINGSPLASHSCREEN:
+            DrawOpeningSplashScreen();
+            break;
+        case TITLESCREEN:
+            DrawTitleScreen();
+            break;
+        default:
+            ASSERT(FALSE);
+    }
 
-    ClearScreen(&pixel);
-#endif
 
-    Blit32BppBitmapToBuffer(&gPlayer.sprite[gPlayer.currentArmor][gPlayer.direction + gPlayer.spriteIndex], gPlayer.screenPosX, gPlayer.screenPosY);
+//#ifdef SIMD
+//    __m128i quadPixel = { 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00, 0xff };
+//
+//    ClearScreen(&quadPixel);
+//#else
+//    PIXEL32 pixel = { 0x7f, 0x00, 0x00, 0xff };
+//
+//    ClearScreen(&pixel);
+//#endif
+//
+//    Blit32BppBitmapToBuffer(&gPlayer.sprite[gPlayer.currentArmor][gPlayer.direction + gPlayer.spriteIndex], gPlayer.screenPosX, gPlayer.screenPosY);
 
     
 
@@ -1144,4 +1069,188 @@ void MenuItemTitleScreenOptions(void) {
 
 void MenuItemTitleScreenExit(void) {
 
+}
+
+void DrawOpeningSplashScreen(void) {
+
+}
+
+void DrawTitleScreen(void) {
+    PIXEL32 white = { 0xff, 0xff, 0xff, 0xff };
+    static uint64_t localFrameCounter;
+    static uint64_t lastFrameSeen;
+
+    memset(gBackBuffer.memory, 0, GAME_DRAWING_AREA_MEMORY_SIZE);
+
+    BlitStringToBuffer(GAME_NAME, &g6x7Font, &white, (GAME_RES_WIDTH / 2) - ((strlen(GAME_NAME) * 6) / 2), 60);
+
+    for (uint8_t menuItem = 0; menuItem < gMenuTitleScreen.itemCount; menuItem++) {
+        BlitStringToBuffer(
+            gMenuTitleScreen.items[menuItem]->name,
+            &g6x7Font, &white,
+            gMenuTitleScreen.items[menuItem]->x,
+            gMenuTitleScreen.items[menuItem]->y);
+    }
+
+    BlitStringToBuffer(
+        "»",
+        &g6x7Font,
+        &white,
+        gMenuTitleScreen.items[gMenuTitleScreen.selectedItem]->x - 6,
+        gMenuTitleScreen.items[gMenuTitleScreen.selectedItem]-> y);
+}
+
+void PlayerInputOpeningSplashScreen(void) {
+
+}
+
+void PlayerInputTitleScreen(void) {
+    int16_t escapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
+    int16_t debugKeyIsDown = GetAsyncKeyState(VK_F1);
+    int16_t leftKeyIsDown = GetAsyncKeyState(VK_LEFT) | GetAsyncKeyState('A');
+    int16_t rightKeyIsDown = GetAsyncKeyState(VK_RIGHT) | GetAsyncKeyState('D');
+    int16_t upKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
+    int16_t downKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
+
+    static int16_t debugKeyWasDown;
+    static int16_t leftKeyWasDown;
+    static int16_t rightKeyWasDown;
+    static int16_t upKeyWasDown;
+    static int16_t downKeyWasDown;
+
+    if (gGamepadId >= 0) {
+        if (XInputGetState(gGamepadId, &gGamepadState) == ERROR_SUCCESS) {
+            escapeKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
+            leftKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+            rightKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+            upKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
+            downKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+        }
+    }
+
+    if (escapeKeyIsDown) {
+        SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
+    }
+
+    if (debugKeyIsDown && !debugKeyWasDown) {
+        gPerformanceData.displayDebugInfo = !gPerformanceData.displayDebugInfo;
+    }
+
+    if (downKeyIsDown && !downKeyWasDown) {
+        if (gMenuTitleScreen.selectedItem < gMenuTitleScreen.itemCount - 1) {
+            gMenuTitleScreen.selectedItem++;
+        }
+    }
+
+    if (upKeyIsDown && !upKeyWasDown) {
+        if (gMenuTitleScreen.selectedItem > 0) {
+            gMenuTitleScreen.selectedItem--;
+        }
+    }
+
+    debugKeyWasDown = debugKeyIsDown;
+    leftKeyWasDown = leftKeyIsDown;
+    rightKeyWasDown = rightKeyIsDown;
+    upKeyWasDown = upKeyIsDown;
+    downKeyWasDown = downKeyIsDown;
+}
+
+void PlayerInputOverworld(void) {
+    int16_t escapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
+    int16_t debugKeyIsDown = GetAsyncKeyState(VK_F1);
+    int16_t leftKeyIsDown = GetAsyncKeyState(VK_LEFT) | GetAsyncKeyState('A');
+    int16_t rightKeyIsDown = GetAsyncKeyState(VK_RIGHT) | GetAsyncKeyState('D');
+    int16_t upKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
+    int16_t downKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
+
+    static int16_t debugKeyWasDown;
+    static int16_t leftKeyWasDown;
+    static int16_t rightKeyWasDown;
+    static int16_t upKeyWasDown;
+    static int16_t downKeyWasDown;
+
+    if (gGamepadId >= 0) {
+        if (XInputGetState(gGamepadId, &gGamepadState) == ERROR_SUCCESS) {
+            escapeKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
+            leftKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+            rightKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+            upKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
+            downKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+        }
+    }
+
+    if (escapeKeyIsDown) {
+        SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
+    }
+
+    if (debugKeyIsDown && !debugKeyWasDown) {
+        gPerformanceData.displayDebugInfo = !gPerformanceData.displayDebugInfo;
+    }
+
+    if (!gPlayer.movementRemaining) {
+        if (downKeyIsDown) {
+            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
+                gPlayer.direction = DOWN;
+                gPlayer.movementRemaining = 16;
+            }
+        }
+        else if (leftKeyIsDown) {
+            if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
+                gPlayer.direction = LEFT;
+                gPlayer.movementRemaining = 16;
+            }
+        }
+        else if (rightKeyIsDown) {
+            if (gPlayer.screenPosX < GAME_RES_WIDTH - 16) {
+                gPlayer.direction = RIGHT;
+                gPlayer.movementRemaining = 16;
+            }
+        }
+        else if (upKeyIsDown) {
+            if (gPlayer.screenPosY > 0) {
+                gPlayer.direction = UP;
+                gPlayer.movementRemaining = 16;
+            }
+        }
+    }
+    else {
+        gPlayer.movementRemaining--;
+
+        if (gPlayer.direction == DOWN) {
+            gPlayer.screenPosY++;
+        }
+        else if (gPlayer.direction == LEFT) {
+            gPlayer.screenPosX--;
+        }
+        else if (gPlayer.direction == RIGHT) {
+            gPlayer.screenPosX++;
+        }
+        else if (gPlayer.direction == UP) {
+            gPlayer.screenPosY--;
+        }
+
+        switch (gPlayer.movementRemaining) {
+            case 16:
+                gPlayer.spriteIndex = 0;
+                break;
+            case 12:
+                gPlayer.spriteIndex = 1;
+                break;
+            case 8:
+                gPlayer.spriteIndex = 0;
+                break;
+            case 4:
+                gPlayer.spriteIndex = 2;
+                break;
+            case 0:
+                gPlayer.spriteIndex = 0;
+                break;
+        }
+    }
+
+    debugKeyWasDown = debugKeyIsDown;
+    leftKeyWasDown = leftKeyIsDown;
+    rightKeyWasDown = rightKeyIsDown;
+    upKeyWasDown = upKeyIsDown;
+    downKeyWasDown = downKeyIsDown;
 }

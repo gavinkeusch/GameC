@@ -6,7 +6,7 @@
     #define ASSERT(expression) ((void)0);
 #endif
 
-#define GAME_NAME       "Game_C"
+#define GAME_NAME       "Adventures In C"
 #define GAME_RES_WIDTH  384
 #define GAME_RES_HEIGHT 240
 #define GAME_BPP        32
@@ -48,6 +48,15 @@ typedef enum LOGLEVEL {
     LOG_INFO,
     LOG_DEBUG
 } LOGLEVEL;
+
+typedef enum GAMESTATE {
+    OPENINGSPLASHSCREEN,
+    TITLESCREEN,
+    OVERWORLD,
+    BATTLE,
+    OPTIONSCREEN,
+    EXITYESNOSCREEN
+} GAMESTATE;
 
 #define LOG_FILE_NAME GAME_NAME ".log"
 
@@ -136,3 +145,10 @@ void ClearScreen(_In_ __m128i* color);
 #else
 void ClearScreen(_In_ PIXEL32* pixel);
 #endif
+
+void DrawOpeningSplashScreen(void);
+void DrawTitleScreen(void);
+
+void PlayerInputOpeningSplashScreen(void);
+void PlayerInputTitleScreen(void);
+void PlayerInputOverworld(void);

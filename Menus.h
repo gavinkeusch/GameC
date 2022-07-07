@@ -23,9 +23,9 @@ void MenuItemTitleScreenExit(void);
 // Title Screen
 
 MENUITEM gResumeGame = { "Resume", (GAME_RES_WIDTH / 2) - ((6 * 6) / 2), 100, MenuItemTitleScreenResume };
-MENUITEM gStartNewGame = { "Start New Game" (GAME_RES_WIDTH / 2) = ((14 * 6) / 2), 120, MenuItemTitleScreenStartNew };
-MENUITEM gOptions = { "Options" (GAME_RES_WIDTH / 2) = ((7 * 6) / 2), 140, MenuItemTitleScreenOptions };
-MENUITEM gExit = { "Exit" (GAME_RES_WIDTH / 2) = ((4 * 6) / 2), 160, MenuItemTitleScreenExit };
+MENUITEM gStartNewGame = { "Start New Game", (GAME_RES_WIDTH / 2) - ((14 * 6) / 2), 120, MenuItemTitleScreenStartNew };
+MENUITEM gOptions = { "Options", (GAME_RES_WIDTH / 2) - ((7 * 6) / 2), 140, MenuItemTitleScreenOptions };
+MENUITEM gExit = { "Exit", (GAME_RES_WIDTH / 2) - ((4 * 6) / 2), 160, MenuItemTitleScreenExit };
 
 MENUITEM* gTitleScreenItems[] = { &gResumeGame, &gStartNewGame, &gOptions, &gExit };
 
