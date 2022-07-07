@@ -49,12 +49,14 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
     }
 
     if ((NtDllModuleHandle = GetModuleHandleA("ntdll.dll")) == NULL) {
-        MessageBoxA(NULL, "Couldn't find ntdll.dll!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Couldn't load ntdll.dll! Error 0x%08lx!", __FUNCTION__, GetLastError());
+        MessageBoxA(NULL, "Couldn't load ntdll.dll!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
     if ((NtQueryTimerResolution = (_NtQueryTimerResolution)GetProcAddress(NtDllModuleHandle, "NtQueryTimerResolution")) == NULL) {
-        MessageBoxA(NULL, "Couldn't find NtQueryTimerResolution function in ntdll.dll!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Couldn't find NtQueryTimerResolution function in ntdll.dll! Error 0x%08lx!", __FUNCTION__, GetLastError());
+        MessageBoxA(NULL, "Couldn't find NtQueryTimerResolution function in ntdll.dll!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -64,22 +66,26 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
     GetSystemTimeAsFileTime((FILETIME*)&gPerformanceData.previousSystemTime);
 
     if (GameIsAlreadyRunning() == TRUE) {
-        MessageBoxA(NULL, "Another instance of this program is running!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Another instance of this program is running!", __FUNCTION__);
+        MessageBoxA(NULL, "Another instance of this program is running!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
     if (timeBeginPeriod(1) == TIMERR_NOCANDO) {
-        MessageBoxA(NULL, "Failed to set global timer resolution!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to set global timer resolution!", __FUNCTION__);
+        MessageBoxA(NULL, "Failed to set global timer resolution!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
     if (SetPriorityClass(processHandle, HIGH_PRIORITY_CLASS) == 0) {
-        MessageBoxA(NULL, "Failed to set process priority!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to set process priority! Error 0x%08lx!", __FUNCTION__, GetLastError());
+        MessageBoxA(NULL, "Failed to set process priority!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
     if (SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) == 0) {
-        MessageBoxA(NULL, "Failed to set thread priority!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to set thread priority! Error 0x%08lx!", __FUNCTION__, GetLastError());
+        MessageBoxA(NULL, "Failed to set thread priority!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -88,11 +94,13 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
     }
 
     if (CreateMainGameWindow() != ERROR_SUCCESS) {
+        LogMessageA(LOG_ERROR, "[%s] CreateMainGameWindow failed!", __FUNCTION__);
         goto Exit;
     }
 
     if ((Load32BppBitmapFromFile("..\\Assets\\6x7Font.bmpx", &g6x7Font)) != ERROR_SUCCESS) {
-        MessageBoxA(NULL, "Failed to load 6x7Font!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to load 6x7Font!", __FUNCTION__);
+        MessageBoxA(NULL, "Failed to load 6x7Font!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -107,14 +115,16 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
     gBackBuffer.memory = VirtualAlloc(NULL, GAME_DRAWING_AREA_MEMORY_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
     if (gBackBuffer.memory == NULL) {
-        MessageBoxA(NULL, "Failed to allocate memory for drawing surface!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to allocate memory for drawing surface!", __FUNCTION__);
+        MessageBoxA(NULL, "Failed to allocate memory for drawing surface!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
     memset(gBackBuffer.memory, 0x7f, GAME_DRAWING_AREA_MEMORY_SIZE);
 
     if (InitializeHero() != ERROR_SUCCESS) {
-        MessageBoxA(NULL, "Failed to initialize hero!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Failed to initialize hero!", __FUNCTION__);
+        MessageBoxA(NULL, "Failed to initialize hero!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -161,7 +171,7 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
                             (FILETIME*) &currentKernelCPUTime,
                             (FILETIME*) &currentUserCPUTTime);
 
-            gPerformanceData.cpuPercent = (currentKernelCPUTime - previousKernelCPUTTime) +
+            gPerformanceData.cpuPercent = (double)(currentKernelCPUTime - previousKernelCPUTTime) +
                     (currentUserCPUTTime - previousUserCPUTime);
             gPerformanceData.cpuPercent /= (gPerformanceData.currentSystemTime - gPerformanceData.previousSystemTime);
             gPerformanceData.cpuPercent /= gPerformanceData.systemInfo.dwNumberOfProcessors;
@@ -232,8 +242,9 @@ DWORD CreateMainGameWindow(void) {
     if (!RegisterClassExA(&windowClass)) {
         result = GetLastError();
 
+        LogMessageA(LOG_ERROR, "[%s] Window Registration Failed! Error 0x%08lx!", __FUNCTION__, result);
         MessageBox(NULL, "Window Registration Failed!", "Error!",
-                   MB_ICONEXCLAMATION | MB_OK);
+                   MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -242,7 +253,8 @@ DWORD CreateMainGameWindow(void) {
 
     if (!gGameWindow) {
         result = GetLastError();
-        MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        LogMessageA(LOG_ERROR, "[%s] Window Creation Failed! Error 0x%08lx!", __FUNCTION__, result);
+        MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONERROR | MB_OK);
         goto Exit;
     }
 
@@ -258,12 +270,14 @@ DWORD CreateMainGameWindow(void) {
 
     if (SetWindowLongPtrA(gGameWindow, GWL_STYLE, WS_VISIBLE) == 0) {
         result = GetLastError();
+        LogMessageA(LOG_ERROR, "[%s] SetWindowLongPtrA Failed! Error 0x%08lx!", __FUNCTION__, result);
         goto Exit;
     }
 
     if (SetWindowPos(gGameWindow, HWND_TOP, gPerformanceData.monitorInfo.rcMonitor.left, gPerformanceData.monitorInfo.rcMonitor.top,
                      gPerformanceData.monitorWidth, gPerformanceData.monitorHeight, SWP_FRAMECHANGED) == 0) {
         result = GetLastError();
+        LogMessageA(LOG_ERROR, "[%s] SetWindowPos Failed! Error 0x%08lx!", __FUNCTION__, result);
         goto Exit;
     }
 
@@ -307,25 +321,25 @@ void ProcessPlayerInput(void) {
     if (!gPlayer.movementRemaining) {
         if (downKeyIsDown) {
             if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
-                gPlayer.direction = DIRECTION_DOWN;
+                gPlayer.direction = DOWN;
                 gPlayer.movementRemaining = 16;
             }
         } 
         else if (leftKeyIsDown) {
             if (gPlayer.screenPosY < GAME_RES_HEIGHT - 16) {
-                gPlayer.direction = DIRECTION_LEFT;
+                gPlayer.direction = LEFT;
                 gPlayer.movementRemaining = 16;
             }
         } 
         else if (rightKeyIsDown) {
             if (gPlayer.screenPosX < GAME_RES_WIDTH - 16) {
-                gPlayer.direction = DIRECTION_RIGHT;
+                gPlayer.direction = RIGHT;
                 gPlayer.movementRemaining = 16;
             }
         } 
         else if (upKeyIsDown) {
             if (gPlayer.screenPosY > 0) {
-                gPlayer.direction = DIRECTION_UP;
+                gPlayer.direction = UP;
                 gPlayer.movementRemaining = 16;
             }
         }
@@ -333,16 +347,16 @@ void ProcessPlayerInput(void) {
     else {
         gPlayer.movementRemaining--;
 
-        if (gPlayer.direction == DIRECTION_DOWN) {
+        if (gPlayer.direction == DOWN) {
             gPlayer.screenPosY++;
         }
-        else if (gPlayer.direction == DIRECTION_LEFT) {
+        else if (gPlayer.direction == LEFT) {
             gPlayer.screenPosX--;
         }
-        else if (gPlayer.direction == DIRECTION_RIGHT) {
+        else if (gPlayer.direction == RIGHT) {
             gPlayer.screenPosX++;
         }
-        else if (gPlayer.direction == DIRECTION_UP) {
+        else if (gPlayer.direction == UP) {
             gPlayer.screenPosY--;
         }
 
@@ -361,9 +375,6 @@ void ProcessPlayerInput(void) {
                 break;
             case 0:
                 gPlayer.spriteIndex = 0;
-                break;
-            default:
-                // assert
                 break;
         }
     }
@@ -437,6 +448,8 @@ Exit:
         CloseHandle(fileHandle);
     }
     
+    LogMessageA(LOG_ERROR, "[%s] Error 0x%08lx!", __FUNCTION__, error);
+
     return error;
 }
 
@@ -446,7 +459,7 @@ DWORD InitializeHero(void) {
     gPlayer.screenPosX = 32;
     gPlayer.screenPosY = 32;
     gPlayer.currentArmor = SUIT_0;
-    gPlayer.direction = DIRECTION_DOWN;
+    gPlayer.direction = DOWN;
 
     if ((error = Load32BppBitmapFromFile("..\\Assets\\Hero_Suit0_Down_Standing.bmpx", &gPlayer.sprite[SUIT_0][FACING_DOWN_0])) != ERROR_SUCCESS) {
         MessageBoxA(NULL, "Failed to load Hero_Suit0_Down_Standing!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -553,317 +566,315 @@ void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* fontSheet, _In_ PIXE
     stringBitmap.memory = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (size_t)bytesPerCharacter * (size_t)stringLength);
 
     for (int character = 0; character < stringLength; character++) {
-        int startingFontSheetByte = 0;
+        int startingFontSheetPixel = 0;
         int fontSheetOffset = 0;
         int stringBitmapOffset = 0;
         PIXEL32 fontSheetPixel = { 0 };
 
         switch (string[character]) {
         case 'A':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth;
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth;
             break;
         case 'B':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + charWidth;
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + charWidth;
             break;
         case 'C':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (2 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (2 * charWidth);
             break;
         case 'D':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (3 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (3 * charWidth);
             break;
         case 'E':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (4 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (4 * charWidth);
             break;
         case 'F':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (5 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (5 * charWidth);
             break;
         case 'G':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (6 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (6 * charWidth);
             break;
         case 'H':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (7 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (7 * charWidth);
             break;
         case 'I':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (8 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (8 * charWidth);
             break;
         case 'J':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (9 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (9 * charWidth);
             break;
         case 'K':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (10 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (10 * charWidth);
             break;
         case 'L':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (11 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (11 * charWidth);
             break;
         case 'M':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (12 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (12 * charWidth);
             break;
         case 'N':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (13 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (13 * charWidth);
             break;
         case 'O':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (14 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (14 * charWidth);
             break;
         case 'P':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (15 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (15 * charWidth);
             break;
         case 'Q':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (16 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (16 * charWidth);
             break;
         case 'R':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (17 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (17 * charWidth);
             break;
         case 'S':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (18 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (18 * charWidth);
             break;
         case 'T':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (19 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (19 * charWidth);
             break;
         case 'U':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (20 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (20 * charWidth);
             break;
         case 'V':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (21 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (21 * charWidth);
             break;
         case 'W':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (22 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (22 * charWidth);
             break;
         case 'X':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (23 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (23 * charWidth);
             break;
         case 'Y':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (24 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (24 * charWidth);
             break;
         case 'Z':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (25 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (25 * charWidth);
             break;
         case 'a':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (26 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (26 * charWidth);
             break;
         case 'b':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (27 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (27 * charWidth);
             break;
         case 'c':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (28 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (28 * charWidth);
             break;
         case 'd':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (29 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (29 * charWidth);
             break;
         case 'e':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (30 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (30 * charWidth);
             break;
         case 'f':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (31 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (31 * charWidth);
             break;
         case 'g':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (32 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (32 * charWidth);
             break;
         case 'h':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (33 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (33 * charWidth);
             break;
         case 'i':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (34 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (34 * charWidth);
             break;
         case 'j':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (35 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (35 * charWidth);
             break;
         case 'k':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (36 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (36 * charWidth);
             break;
         case 'l':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (37 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (37 * charWidth);
             break;
         case 'm':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (38 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (38 * charWidth);
             break;
         case 'n':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (39 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (39 * charWidth);
             break;
         case 'o':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (40 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (40 * charWidth);
             break;
         case 'p':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (41 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (41 * charWidth);
             break;
         case 'q':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (42 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (42 * charWidth);
             break;
         case 'r':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (43 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (43 * charWidth);
             break;
         case 's':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (44 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (44 * charWidth);
             break;
         case 't':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (45 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (45 * charWidth);
             break;
         case 'u':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (46 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (46 * charWidth);
             break;
         case 'v':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (47 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (47 * charWidth);
             break;
         case 'w':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (48 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (48 * charWidth);
             break;
         case 'x':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (49 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (49 * charWidth);
             break;
         case 'y':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (50 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (50 * charWidth);
             break;
         case 'z':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (51 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (51 * charWidth);
             break;
         case '0':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (52 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (52 * charWidth);
             break;
         case '1':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (53 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (53 * charWidth);
             break;
         case '2':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (54 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (54 * charWidth);
             break;
         case '3':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (55 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (55 * charWidth);
             break;
         case '4':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (56 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (56 * charWidth);
             break;
         case '5':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (57 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (57 * charWidth);
             break;
         case '6':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (58 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (58 * charWidth);
             break;
         case '7':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (59 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (59 * charWidth);
             break;
         case '8':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (60 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (60 * charWidth);
             break;
         case '9':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (61 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (61 * charWidth);
             break;
         case '`':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (62 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (62 * charWidth);
             break;
         case '~':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (63 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (63 * charWidth);
             break;
         case '!':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (64 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (64 * charWidth);
             break;
         case '@':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (65 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (65 * charWidth);
             break;
         case '#':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (66 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (66 * charWidth);
             break;
         case '$':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (67 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (67 * charWidth);
             break;
         case '%':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (68 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (68 * charWidth);
             break;
         case '^':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (69 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (69 * charWidth);
             break;
         case '&':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (70 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (70 * charWidth);
             break;
         case '*':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (71 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (71 * charWidth);
             break;
         case '(':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (72 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (72 * charWidth);
             break;
         case ')':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (73 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (73 * charWidth);
             break;
         case '-':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (74 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (74 * charWidth);
             break;
         case '=':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (75 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (75 * charWidth);
             break;
         case '_':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (76 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (76 * charWidth);
             break;
         case '+':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (77 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (77 * charWidth);
             break;
         case '\\':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (78 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (78 * charWidth);
             break;
         case '|':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (79 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (79 * charWidth);
             break;
         case '[':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (80 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (80 * charWidth);
             break;
         case ']':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (81 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (81 * charWidth);
             break;
         case '{':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (82 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (82 * charWidth);
             break;
         case '}':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (83 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (83 * charWidth);
             break;
         case ';':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (84 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (84 * charWidth);
             break;
         case '\'':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (85 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (85 * charWidth);
             break;
         case ':':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (86 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (86 * charWidth);
             break;
         case '"':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (87 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (87 * charWidth);
             break;
         case ',':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (88 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (88 * charWidth);
             break;
         case '<':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (89 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (89 * charWidth);
             break;
         case '>':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (90 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (90 * charWidth);
             break;
         case '.':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (91 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (91 * charWidth);
             break;
         case '/':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (92 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (92 * charWidth);
             break;
         case '?':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
             break;
         case ' ':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (94 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (94 * charWidth);
             break;
         // Github does not preserve this character ASCII 0xBB
         case '»':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (95 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (95 * charWidth);
             break;
         // Github does not preserve this character ASCII 0xAB
         case '«':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (96 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (96 * charWidth);
             break;
         case '\xf2':
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (97 * charWidth);
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (97 * charWidth);
             break;
         default:
-            // TODO: assert?
-            startingFontSheetByte = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
-
+            startingFontSheetPixel = (fontSheet->bitmapinfo.bmiHeader.biWidth * fontSheet->bitmapinfo.bmiHeader.biHeight) - fontSheet->bitmapinfo.bmiHeader.biWidth + (93 * charWidth);
         }
 
         for (int yPixel = 0; yPixel < charHeight; yPixel++) {
             for (int xPixel = 0; xPixel < charWidth; xPixel++) {
-                fontSheetOffset = startingFontSheetByte + xPixel - (fontSheet->bitmapinfo.bmiHeader.biWidth * yPixel);
+                fontSheetOffset = startingFontSheetPixel + xPixel - (fontSheet->bitmapinfo.bmiHeader.biWidth * yPixel);
                 stringBitmapOffset = (character * charWidth) + (stringBitmap.bitmapinfo.bmiHeader.biWidth * stringBitmap.bitmapinfo.bmiHeader.biHeight) -
                     stringBitmap.bitmapinfo.bmiHeader.biWidth + xPixel - (stringBitmap.bitmapinfo.bmiHeader.biWidth * yPixel);
 
@@ -896,46 +907,18 @@ void RenderFrameGraphics(void) {
     ClearScreen(&pixel);
 #endif
 
-    PIXEL32 green = { 0x00, 0xff, 0x00, 0xff };
-    
-    BlitStringToBuffer(">>GAME OVER<<", &g6x7Font, &green, 60, 60);
-
     Blit32BppBitmapToBuffer(&gPlayer.sprite[gPlayer.currentArmor][gPlayer.direction + gPlayer.spriteIndex], gPlayer.screenPosX, gPlayer.screenPosY);
+
+    
+
+    if (gPerformanceData.displayDebugInfo) {
+        DrawDebugInfo();
+    }
 
     HDC deviceContext = GetDC(gGameWindow);
 
-    StretchDIBits(deviceContext, 0, 0, gPerformanceData.monitorWidth, gPerformanceData.monitorHeight, 0,0,
-                  GAME_RES_WIDTH,GAME_RES_HEIGHT, gBackBuffer.memory, &gBackBuffer.bitmapinfo, DIB_RGB_COLORS, SRCCOPY);
-
-    if (gPerformanceData.displayDebugInfo) {
-        SelectObject(deviceContext, (HFONT) GetStockObject(ANSI_FIXED_FONT));
-        char DebugTextBuffer[64] = { 0 };
-        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Raw:        %.01f", gPerformanceData.rawFPSAverage);
-        TextOutA(deviceContext,0 , 0, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Cooked:     %.01f  ", gPerformanceData.cookedFPSAverage);
-        TextOutA(deviceContext,0 , 13, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Min. Timer Res: %.02f ", gPerformanceData.minimumTimerResolution / 10000.0f);
-        TextOutA(deviceContext,0 , 26, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Max. Timer Res: %.02f  ", gPerformanceData.maximumTimerResolution / 10000.0f);
-        TextOutA(deviceContext,0 , 39, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Cur. Timer Res: %.02f  ", gPerformanceData.currentTimerResolution / 10000.0f);
-TextOutA(deviceContext, 0, 52, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Handles:        %lu   ", gPerformanceData.handleCount);
-TextOutA(deviceContext, 0, 65, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Memory:       %lu KB ", gPerformanceData.memInfo.PrivateUsage / 1024);
-TextOutA(deviceContext, 0, 78, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "CPU:           %.02f %% ", gPerformanceData.cpuPercent);
-TextOutA(deviceContext, 0, 91, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Total Frames:   %llu ", gPerformanceData.totalFramesRendered);
-TextOutA(deviceContext, 0, 104, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "Screen Pos:  (%d,%d)", gPlayer.screenPosX, gPlayer.screenPosY);
-TextOutA(deviceContext, 0, 117, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-    }
+    StretchDIBits(deviceContext, 0, 0, gPerformanceData.monitorWidth, gPerformanceData.monitorHeight, 0, 0,
+        GAME_RES_WIDTH, GAME_RES_HEIGHT, gBackBuffer.memory, &gBackBuffer.bitmapinfo, DIB_RGB_COLORS, SRCCOPY);
 
     ReleaseDC(gGameWindow, deviceContext);
 }
@@ -962,15 +945,15 @@ DWORD LoadRegistryParameters(void) {
     result = RegCreateKeyExA(HKEY_CURRENT_USER, "SOFTWARE\\" GAME_NAME, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &regKey, &regDisposotion);
 
     if (result != ERROR_SUCCESS) {
-        LogMessageA(LOG_LEVEL_ERROR, "[%s] RegCreateKey failed with error code 0x%08lx!", __FUNCTION__, result);
+        LogMessageA(LOG_ERROR, "[%s] RegCreateKey failed with error code 0x%08lx!", __FUNCTION__, result);
         goto Exit;
     }
 
     if (regDisposotion == REG_CREATED_NEW_KEY) {
-        LogMessageA(LOG_LEVEL_INFO, "[%s] Register key did not exist; created new key HKCU\\SOFTWARE\\%s", __FUNCTION__, GAME_NAME);
+        LogMessageA(LOG_ERROR, "[%s] Register key did not exist; created new key HKCU\\SOFTWARE\\%s", __FUNCTION__, GAME_NAME);
     }
     else {
-        LogMessageA(LOG_LEVEL_INFO, "[%s] Open existing registry key HKCU\\SOFTWARE\\%s", __FUNCTION__, GAME_NAME);
+        LogMessageA(LOG_INFO, "[%s] Open existing registry key HKCU\\SOFTWARE\\%s", __FUNCTION__, GAME_NAME);
     }
 
     result = RegGetValueA(regKey, NULL, "LogLevel", RRF_RT_DWORD, NULL, (BYTE*)&gRegistryParams.logLevel, &regBytesRead);
@@ -978,15 +961,15 @@ DWORD LoadRegistryParameters(void) {
     if (result != ERROR_SUCCESS) {
         if (result == ERROR_FILE_NOT_FOUND) {
             result = ERROR_SUCCESS;
-            LogMessageA(LOG_LEVEL_INFO, "[%s] Registry value 'LogLevel' not found. Using default of 0. (LOG_LEVEL_NONE)", __FUNCTION__);
-            gRegistryParams.logLevel = LOG_LEVEL_NONE;
+            LogMessageA(LOG_INFO, "[%s] Registry value 'LogLevel' not found. Using default of 0. (LOG_LEVEL_NONE)", __FUNCTION__);
+            gRegistryParams.logLevel = LOG_NONE;
         }
         else {
-            LogMessageA(LOG_LEVEL_ERROR, "[%s] Failed to read the 'LogLevel' registry value! Error 0x%08lx!", __FUNCTION__, result);
+            LogMessageA(LOG_ERROR, "[%s] Failed to read the 'LogLevel' registry value! Error 0x%08lx!", __FUNCTION__, result);
         }
     }
 
-    LogMessageA(LOG_LEVEL_INFO, "[%s] LogLevel is %d.", __FUNCTION__, gRegistryParams.logLevel);
+    LogMessageA(LOG_INFO, "[%s] LogLevel is %d.", __FUNCTION__, gRegistryParams.logLevel);
 
     //.....
 
@@ -1020,20 +1003,22 @@ void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...) {
     }
 
     switch (logLevel) {
-    case LOG_LEVEL_NONE:
-        return;
-    case LOG_LEVEL_INFO:
-        strcpy_s(severityString, sizeof(severityString), "[INFO]");
-        break;
-    case LOG_LEVEL_WARN:
-        strcpy_s(severityString, sizeof(severityString), "[WARN]");
-        break;
-    case LOG_LEVEL_ERROR:
-        strcpy_s(severityString, sizeof(severityString), "[ERROR]");
-        break;
-    case LOG_LEVEL_DEBUG:
-        strcpy_s(severityString, sizeof(severityString), "[DEBUG]");
-        break;
+        case LOG_NONE:
+            return;
+        case LOG_INFO:
+            strcpy_s(severityString, sizeof(severityString), "[INFO]");
+            break;
+        case LOG_WARN:
+            strcpy_s(severityString, sizeof(severityString), "[WARN]");
+            break;
+        case LOG_ERROR:
+            strcpy_s(severityString, sizeof(severityString), "[ERROR]");
+            break;
+        case LOG_DEBUG:
+            strcpy_s(severityString, sizeof(severityString), "[DEBUG]");
+            break;
+        default:
+            ASSERT(FALSE);
     }
 
     GetLocalTime(&time);
@@ -1060,4 +1045,39 @@ void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...) {
     if (logFileHandle != INVALID_HANDLE_VALUE) {
         CloseHandle(logFileHandle);
     }
+}
+
+void DrawDebugInfo(void) {
+    char debugTextBuffer[64] = { 0 };
+    PIXEL32 white = { 0xff, 0xff, 0xff, 0xff };
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPS Raw:        %.01f", gPerformanceData.rawFPSAverage);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 0);
+    
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPS Cooked:     %.01f  ", gPerformanceData.cookedFPSAverage);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 8);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Min. Timer Res: %.02f ", gPerformanceData.minimumTimerResolution / 10000.0f);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 16);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Max. Timer Res: %.02f  ", gPerformanceData.maximumTimerResolution / 10000.0f);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 24);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Cur. Timer Res: %.02f  ", gPerformanceData.currentTimerResolution / 10000.0f);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 32);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Handles:        %lu   ", gPerformanceData.handleCount);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 40);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Memory:         %lu KB ", gPerformanceData.memInfo.PrivateUsage / 1024);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 48);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "CPU:            %.02f %% ", gPerformanceData.cpuPercent);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 56);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Total Frames:   %llu ", gPerformanceData.totalFramesRendered);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 64);
+
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Screen Pos:     (%d,%d)", gPlayer.screenPosX, gPlayer.screenPosY);
+    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 72);
 }

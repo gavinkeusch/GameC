@@ -1,5 +1,7 @@
 #pragma once
 
+#define ASSERT(expression) if (!(expression)) { *(int*)0 = 0; };
+
 #define GAME_NAME       "Game_C"
 #define GAME_RES_WIDTH  384
 #define GAME_RES_HEIGHT 240
@@ -26,18 +28,23 @@
 #define FACING_UP_1    10
 #define FACING_UP_2    11
 
-#define DIRECTION_DOWN  0
-#define DIRECTION_LEFT  3
-#define DIRECTION_RIGHT 6
-#define DIRECTION_UP    9
+typedef enum DIRECTION {
+    DOWN = 0,
+    LEFT = 3,
+    RIGHT = 6,
+    UP = 9
+} DIRECTION;
 
 #define FONT_SHEET_CHARACTERS_PER_ROW 98
 
-#define LOG_LEVEL_NONE  0
-#define LOG_LEVEL_INFO  1
-#define LOG_LEVEL_WARN  2
-#define LOG_LEVEL_ERROR 3
-#define LOG_LEVEL_DEBUG 4
+typedef enum LOGLEVEL {
+    LOG_NONE,
+    LOG_ERROR,
+    LOG_WARN,
+    LOG_INFO,
+    LOG_DEBUG
+} LOGLEVEL;
+
 #define LOG_FILE_NAME GAME_NAME ".log"
 
 #pragma warning(disable: 4820) // disable warning about structure padding
@@ -85,7 +92,7 @@ typedef struct HERO {
     int16_t screenPosX;
     int16_t screenPosY;
     uint8_t movementRemaining;
-    uint8_t direction;
+    DIRECTION direction;
     uint8_t currentArmor;
     uint8_t spriteIndex;
     int32_t hp;
@@ -115,6 +122,8 @@ void RenderFrameGraphics(void);
 
 DWORD LoadRegistryParameters(void);
 void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...);
+
+void DrawDebugInfo(void);
 
 #ifdef SIMD
 void ClearScreen(_In_ __m128i* color);
