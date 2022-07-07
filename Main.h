@@ -1,6 +1,10 @@
 #pragma once
 
-#define ASSERT(expression) if (!(expression)) { *(int*)0 = 0; };
+#ifdef _DEBUG
+    #define ASSERT(expression) if (!(expression)) { *(int*)0 = 0; };
+#else
+    #define ASSERT(expression) ((void)0);
+#endif
 
 #define GAME_NAME       "Game_C"
 #define GAME_RES_WIDTH  384
@@ -101,7 +105,7 @@ typedef struct HERO {
 } HERO;
 
 typedef struct REGISTRYPARAMS {
-    DWORD logLevel;
+    LOGLEVEL logLevel;
 } REGISTRYPARAMS;
 
 LRESULT CALLBACK MainWindowProc(_In_ HWND windowHandle, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam);
@@ -121,9 +125,11 @@ void BlitStringToBuffer(_In_ char* string, _In_ GAMEBITMAP* fontSheet, _In_ PIXE
 void RenderFrameGraphics(void);
 
 DWORD LoadRegistryParameters(void);
-void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...);
+void LogMessageA(_In_ LOGLEVEL logLevel, _In_ char* message, _In_ ...);
 
 void DrawDebugInfo(void);
+
+void FindFirstConnectedGamepad(void);
 
 #ifdef SIMD
 void ClearScreen(_In_ __m128i* color);

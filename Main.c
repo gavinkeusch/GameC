@@ -1,29 +1,47 @@
-#pragma warning(push, 0)
+#pragma warning(push, 3)
+
 #include <stdio.h>
 #include <windows.h>
 #include <psapi.h>
 #include <emmintrin.h>
 #pragma warning(pop)
 
+#ifdef SIMD
+#include <emmintrin.h>
+#endif
+
+#pragma warning(pop)
+
+#include <Xinput.h>
 #include <stdint.h>
 #include "Main.h"
+#include "Menus.h"
 
 #pragma comment(lib, "Winmm.lib")
+#pragma comment(lib, "Xinput.lib")
 
 HWND gGameWindow;
 BOOL gGameIsRunning;
+
 GAMEBITMAP gBackBuffer;
 GAMEBITMAP g6x7Font;
+
 GAMEPERFORMANCEDATA gPerformanceData;
+
 HERO gPlayer;
+
 BOOL gWindowHasFocus;
+
 REGISTRYPARAMS gRegistryParams;
 
-int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
+XINPUT_STATE gGamepadState;
+int8_t gGamepadId = -1;
+
+int __stdcall WinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previousInstance, _In_ PSTR commandLine, _In_ INT cmdShow) {
     UNREFERENCED_PARAMETER(instance);
     UNREFERENCED_PARAMETER(previousInstance);
     UNREFERENCED_PARAMETER(commandLine);
-    UNREFERENCED_PARAMETER(showCommand);
+    UNREFERENCED_PARAMETER(cmdShow);
 
     MSG message = { 0 };
     int64_t frameStart = 0;
@@ -165,6 +183,9 @@ int __stdcall WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR comm
 
         if ((gPerformanceData.totalFramesRendered % CALCULATE_AVG_FPS_EVERY_X_FRAMES) == 0) {
             GetSystemTimeAsFileTime((FILETIME*) &gPerformanceData.currentSystemTime);
+
+            FindFirstConnectedGamepad();
+
             GetProcessTimes(processHandle,
                             &processCreationTime,
                             &processExitTime,
@@ -310,6 +331,16 @@ void ProcessPlayerInput(void) {
     static int16_t upKeyWasDown;
     static int16_t downKeyWasDown;
 
+    if (gGamepadId >= 0) {
+        if (XInputGetState(gGamepadId, &gGamepadState) == ERROR_SUCCESS) {
+            escapeKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
+            leftKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+            rightKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+            upKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
+            downKeyIsDown |= gGamepadState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+        }
+    }
+
     if (escapeKeyIsDown) {
         SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
     }
@@ -448,7 +479,12 @@ Exit:
         CloseHandle(fileHandle);
     }
     
-    LogMessageA(LOG_ERROR, "[%s] Error 0x%08lx!", __FUNCTION__, error);
+    if (error == ERROR_SUCCESS) {
+        LogMessageA(LOG_INFO, "[%s] Loading successful: %s", __FUNCTION__, fileName);
+    }
+    else {
+        LogMessageA(LOG_ERROR, "[%s] Loading Failed %s! Error 0x%08lx!", __FUNCTION__, fileName, error);
+    }
 
     return error;
 }
@@ -926,7 +962,7 @@ void RenderFrameGraphics(void) {
 #ifdef SIMD
 __forceinline void ClearScreen(_In_ __m128i* color) {
     for (int i = 0; i < GAME_RES_WIDTH * GAME_RES_HEIGHT; i += 4) {
-        _mm_store_si128((PIXEL32*)gBackBuffer.memory + i, *color);
+        _mm_store_si128((__m128i*)((PIXEL32*)gBackBuffer.memory + i), *color);
     }
 }
 #else
@@ -982,7 +1018,7 @@ Exit:
     return result;
 }
 
-void LogMessageA(_In_ DWORD logLevel, _In_ char* message, _In_ ...) {
+void LogMessageA(_In_ LOGLEVEL logLevel, _In_ char* message, _In_ ...) {
     size_t messageLength = strlen(message);
     SYSTEMTIME time = { 0 };
     HANDLE logFileHandle = INVALID_HANDLE_VALUE;
@@ -1051,33 +1087,61 @@ void DrawDebugInfo(void) {
     char debugTextBuffer[64] = { 0 };
     PIXEL32 white = { 0xff, 0xff, 0xff, 0xff };
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPS Raw:        %.01f", gPerformanceData.rawFPSAverage);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 0);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPSRaw:  %.01f", gPerformanceData.rawFPSAverage);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 0);
     
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPS Cooked:     %.01f  ", gPerformanceData.cookedFPSAverage);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 8);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "FPSCookd:%.01f  ", gPerformanceData.cookedFPSAverage);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 8);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Min. Timer Res: %.02f ", gPerformanceData.minimumTimerResolution / 10000.0f);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 16);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "MinTimer:%.02f ", gPerformanceData.minimumTimerResolution / 10000.0f);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 16);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Max. Timer Res: %.02f  ", gPerformanceData.maximumTimerResolution / 10000.0f);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 24);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "MaxTimer:%.02f  ", gPerformanceData.maximumTimerResolution / 10000.0f);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 24);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Cur. Timer Res: %.02f  ", gPerformanceData.currentTimerResolution / 10000.0f);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 32);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "CurTimer:%.02f  ", gPerformanceData.currentTimerResolution / 10000.0f);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 32);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Handles:        %lu   ", gPerformanceData.handleCount);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 40);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Handles: %lu   ", gPerformanceData.handleCount);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 40);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Memory:         %lu KB ", gPerformanceData.memInfo.PrivateUsage / 1024);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 48);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Memory:  %lu KB ", gPerformanceData.memInfo.PrivateUsage / 1024);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 48);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "CPU:            %.02f %% ", gPerformanceData.cpuPercent);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 56);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "CPU:     %.02f %% ", gPerformanceData.cpuPercent);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 56);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Total Frames:   %llu ", gPerformanceData.totalFramesRendered);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 64);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "TFrames: %llu ", gPerformanceData.totalFramesRendered);
+    BlitStringToBuffer(debugTextBuffer, & g6x7Font, & white, 0, 64);
 
-    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "Screen Pos:     (%d,%d)", gPlayer.screenPosX, gPlayer.screenPosY);
-    BlitStringToBuffer(&debugTextBuffer, &g6x7Font, &white, 0, 72);
+    sprintf_s(debugTextBuffer, sizeof(debugTextBuffer), "ScreenXY:%d,%d", gPlayer.screenPosX, gPlayer.screenPosY);
+    BlitStringToBuffer(debugTextBuffer, &g6x7Font, &white, 0, 72);
+}
+
+void FindFirstConnectedGamepad(void) {
+    gGamepadId = -1;
+
+    for (int8_t gamepadIndex = 0; gamepadIndex < XUSER_MAX_COUNT && gGamepadId == -1; gamepadIndex++) {
+        XINPUT_STATE state = { 0 };
+        
+        if (XInputGetState(gamepadIndex, &state) == ERROR_SUCCESS) {
+            gGamepadId = gamepadIndex;
+        }
+    }
+}
+
+void MenuItemTitleScreenResume(void) {
+
+}
+
+void MenuItemTitleScreenStartNew(void) {
+
+}
+
+void MenuItemTitleScreenOptions(void) {
+
+}
+
+void MenuItemTitleScreenExit(void) {
+
 }
